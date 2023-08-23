@@ -1,78 +1,68 @@
-import boto3, botocore
-from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response
-from flask import request, redirect, url_for
-from flask import send_from_directory
-import os
-from werkzeug.utils import secure_filename
-import utils
-
-load_dotenv()
+from flask import request, redirect
+from flask import send_from_directory, render_template
+from utils.upload import upload_file_to_s3
+from utils.upload import allowed_file
+from utils.list import list_files
 
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello_from_root():
-    return jsonify(message='Hello from root!')
+@app.route("/success")
+def success():
+    outstr = 'upload succeeded!'
+    return jsonify(message=outstr)
 
-
-@app.route("/hello")
-def hello():
-    return jsonify(message='Hello from path!')
-
+@app.route("/fail")
+def fail():
+    return jsonify(message='upload failed!')
 
 @app.errorhandler(404)
 def resource_not_found(e):
     return make_response(jsonify(error='Not found!'), 404)
 
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-# function to check file extension
-def allowed_file(filename):
-    return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+@app.route("/list")
+def list():
+    contents = list_files()
+    return render_template('collection.html', contents=contents)
 
 @app.route("/upload_page")
 def upload_page():
     return send_from_directory("pages", "upload_page.html")    
 
 @app.route("/upload", methods=["POST"])
-def create():
+def upload():
 
     # check whether an input field with name 'user_file' exist
-    
     if 'user_file' not in request.files:
-        flash('No user_file key in request.files')
-        return redirect(url_for('new'))
+        return redirect("/fail")
 
     # after confirm 'user_file' exist, get the file from input
     file = request.files['user_file']
-
+    if not file:
+        return redirect("/fail")
+    
     # check whether a file is selected
-    #if file.filename == '':
-    #    flash('No selected file')
-    #    return redirect(url_for('new'))
+    if file.filename == '':
+        return redirect("/fail")
 
-    # check whether the file extension is allowed (eg. png,jpeg,jpg,gif)
-    #if file and allowed_file(file.filename):
-    #    output = upload_file_to_s3(file) 
-        
-        # if upload success,will return file name of uploaded file
-    #    if output:
-    #        # write your code here 
-    #        # to save the file name in database
+    # check file extension
+    if not allowed_file(file.filename):
+        return redirect("/fail")
 
-    #        flash("Success upload")
-    #        return redirect(url_for('show'))
+    try:
+        output = upload_file_to_s3(file)
+    except Exception as e:
+        mssg = "Something Happened in App: " + " : " +  str(e)
+        return jsonify(message=mssg)
+    
+    # if upload success,will return file name of uploaded file
+    if output:
+        mssg = 'good here: {0}'.format(output)
+        return jsonify(message=mssg)
+        #return redirect("/success")
 
-        # upload failed, redirect to upload page
-    #    else:
-    #        flash("Unable to upload, try again")
-    #        return redirect(url_for('new'))
-        
-    # if file extension not allowed
-    #else:
-    #    flash("File type not accepted,please try again.")
-    #    return redirect(url_for('new'))
+    # upload failed, redirect to fail page
+    else:
+        return redirect("/fail")
+    
