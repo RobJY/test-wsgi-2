@@ -10,7 +10,7 @@
           <ul>
             {% for item in contents %}
               <li>
-                {{ item }}
+                <a href={{ item[0] }}>{{ item[1] }}</a>
               </li>
             {% endfor %}
           </ul>

@@ -5,18 +5,18 @@ def list_files():
     yaml_vars = load_yaml_vars()
     bucket = yaml_vars['bucket_data']
     s3_client = create_s3_client()
-    public_urls = []
+    link_data = []
     try:
         response = s3_client.list_objects_v2(Bucket=bucket)
         if not response:
-            public_urls.append('response is empty')
+            link_data.append('response is empty')
         else:
             # public_urls.append('1KeyCount: ' + str(response['KeyCount']))
             for content in response.get('Contents', []):
                 presigned_url = s3_client.generate_presigned_url('get_object', Params = {'Bucket': bucket, 'Key': content['Key']}, ExpiresIn = 100)
-                public_urls.append(presigned_url)
+                link_data.append((presigned_url, content['Key']))
     except Exception as e:
-        public_urls.append(bucket)
-        public_urls.append(e)
+        link_data.append(bucket)
+        link_data.append(e)
         pass
-    return public_urls
+    return link_data
