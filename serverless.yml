@@ -11,8 +11,19 @@ custom:
 provider:
   name: aws
   runtime: python3.9
+  stage: dev
+  region: us-east-1
   deploymentBucket:
-    name: rob-serverless-hits-dev
+    name: ${file(./vars.yml):bucket_serverless}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: "s3:*"
+          Resource: 
+            - "arn:aws:s3:::${file(./vars.yml):bucket_data}"
+            - "arn:aws:s3:::${file(./vars.yml):bucket_data}/*"
 
 functions:
   api:
