@@ -5,6 +5,9 @@ from utils.upload import upload_file_to_s3
 from utils.upload import allowed_file
 from utils.list import list_files
 
+import boto3
+import os
+
 app = Flask(__name__)
 
 
@@ -33,12 +36,12 @@ def upload_page():
 @app.route("/upload", methods=["POST"])
 def upload():
 
-    # check whether an input field with name 'user_file' exist
-    if 'user_file' not in request.files:
+    # check whether an input field with name 'image_file' exist
+    if 'image_file' not in request.files:
         return redirect("/fail")
 
-    # after confirm 'user_file' exist, get the file from input
-    file = request.files['user_file']
+    # after confirm 'image_file' exist, get the file from input
+    file = request.files['image_file']
     if not file:
         return redirect("/fail")
     
@@ -56,7 +59,7 @@ def upload():
         mssg = "Something Happened in App: " + " : " +  str(e)
         return jsonify(message=mssg)
     
-    # if upload success,will return file name of uploaded file
+    # if upload success, return uploaded file name
     if output:
         mssg = 'good here: {0}'.format(output)
         return jsonify(message=mssg)
@@ -65,4 +68,50 @@ def upload():
     # upload failed, redirect to fail page
     else:
         return redirect("/fail")
+
+IMAGES_TABLE = os.environ['IMAGES_TABLE']
+# IMAGES_TABLE = 'RobImagesDynamoDBTable'
+
+client_db = boto3.client('dynamodb')
+
+@app.route("/images/<string:image_id>")
+def get_image(image_id):
+    resp = client_db.get_item(
+        TableName=IMAGES_TABLE,
+        Key={
+            'imageId': { 'S': image_id }
+        }
+    )
+    item = resp.get('Item')
+    if not item:
+        return jsonify({'error': 'Image does not exist'}), 404
     
+    return jsonify({
+        'imageId': item.get('imageId').get('S'),
+        'imageName': item.get('imageName').get('S')
+    })
+
+@app.route("/create_db_entry")
+def create_db_entry():
+    return send_from_directory("pages", "create_db_entry.html")    
+
+@app.route("/images", methods=["POST"])
+def create_user():
+
+    image_id = request.form.get('imageId')
+    image_name = request.form.get('imageName')
+    if not image_id or not image_name:
+        return jsonify({'error': 'Please provide imageId and name'}), 400
+    
+    resp = client_db.put_item(
+        TableName=IMAGES_TABLE,
+        Item={
+            'imageId': {'S': image_id },
+            'imageName': {'S': image_name }
+        }
+    )
+
+    return jsonify({
+        'imageId': image_id,
+        'imageName': image_name 
+    })
