@@ -7,7 +7,7 @@ frameworkVersion: '3'
 custom:
   wsgi:
     app: app.app
-  tableName: 'rob-images-table-${self:provider.stage}'
+  tableName: '${file(./vars.yml):image_table_name}-${self:provider.stage}'
 
 provider:
   name: aws
