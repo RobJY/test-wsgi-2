@@ -1,12 +1,12 @@
+import boto3
 from flask import Flask, jsonify, make_response
 from flask import request, redirect
 from flask import send_from_directory, render_template
+import os
 from utils.upload import upload_file_to_s3
 from utils.upload import allowed_file
 from utils.list import list_files
-
-import boto3
-import os
+import uuid
 
 app = Flask(__name__)
 
@@ -98,20 +98,20 @@ def create_db_entry():
 @app.route("/images", methods=["POST"])
 def create_user():
 
-    image_id = request.form.get('imageId')
+    curr_uuid = str(uuid.uuid4())
     image_name = request.form.get('imageName')
-    if not image_id or not image_name:
-        return jsonify({'error': 'Please provide imageId and name'}), 400
+    if not image_name:
+        return jsonify({'error': 'Please provide imageName'}), 400
     
     resp = client_db.put_item(
         TableName=IMAGES_TABLE,
         Item={
-            'imageId': {'S': image_id },
+            'imageId': {'S': curr_uuid },
             'imageName': {'S': image_name }
         }
     )
 
     return jsonify({
-        'imageId': image_id,
+        'imageId': curr_uuid,
         'imageName': image_name 
     })
