@@ -1,7 +1,9 @@
 import boto3
+import flask
 from flask import Flask, jsonify, make_response
 from flask import request, redirect
 from flask import send_from_directory, render_template
+import json
 import os
 from utils.upload import upload_file_to_s3
 from utils.upload import allowed_file
@@ -95,23 +97,52 @@ def get_image(image_id):
 def create_db_entry():
     return send_from_directory("pages", "create_db_entry.html")    
 
-@app.route("/images", methods=["POST"])
+@app.route("/imageIds")
+def get_image_ids():
+    dynamodb = boto3.resource('dynamodb')
+    image_table = dynamodb.Table(IMAGES_TABLE)
+    response = image_table.scan()
+    items = response['Items']
+    image_id_list = []
+    for item in items:
+        image_id = item['imageId']
+        image_id_list.append(image_id)
+    return jsonify({'image_ids': image_id_list})
+
+@app.route("/images", methods=["GET", "POST"])
 def create_user():
 
-    curr_uuid = str(uuid.uuid4())
-    image_name = request.form.get('imageName')
-    if not image_name:
-        return jsonify({'error': 'Please provide imageName'}), 400
-    
-    resp = client_db.put_item(
-        TableName=IMAGES_TABLE,
-        Item={
-            'imageId': {'S': curr_uuid },
-            'imageName': {'S': image_name }
-        }
-    )
+    if flask.request.method == 'POST':
 
-    return jsonify({
-        'imageId': curr_uuid,
-        'imageName': image_name 
-    })
+        curr_uuid = str(uuid.uuid4())
+        image_name = request.form.get('imageName')
+        if not image_name:
+            return jsonify({'error': 'Please provide imageName'}), 400
+    
+        resp = client_db.put_item(
+            TableName=IMAGES_TABLE,
+            Item={
+                'imageId': {'S': curr_uuid },
+                'imageName': {'S': image_name }
+            }
+        )
+
+        return jsonify({
+            'imageId': curr_uuid,
+            'imageName': image_name 
+        })
+    
+    elif flask.request.method == 'GET':
+        # would need something different in production, but just using this for testing
+        #   don't think we would actually use this in production anyway
+        dynamodb = boto3.resource('dynamodb')
+        image_table = dynamodb.Table(IMAGES_TABLE)
+        response = image_table.scan()
+        items = response['Items']
+        image_name_list = []
+        for item in items:
+            image_name = item['imageName']
+            image_name_list.append(image_name)
+        return jsonify({'image_names': image_name_list})
+    
+    
