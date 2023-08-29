@@ -126,6 +126,10 @@ def create_user():
                 'imageName': {'S': image_name }
             }
         )
+        if not resp:
+            return jsonify({
+                'error': 'failed to push image data to database!'
+            })
 
         return jsonify({
             'imageId': curr_uuid,
