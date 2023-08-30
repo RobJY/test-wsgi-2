@@ -18,6 +18,27 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def save_image_data(image_name):
+    curr_uuid = str(uuid.uuid4())
+    if not image_name:
+        return jsonify({'error': 'Please provide imageName'}), 400
+
+    resp = client_db.put_item(
+        TableName=IMAGES_TABLE,
+        Item={
+            'imageId': {'S': curr_uuid },
+            'imageName': {'S': image_name }
+        }
+    )
+    if not resp:
+        return jsonify({
+            'error': 'failed to push image data to database!'
+        })
+
+    # return uuid for verification
+    # TO DO: catch exception above and process accordingly
+    return curr_uuid
+
 def upload_image():
     # check whether an input field with name 'image_file' exist
     if 'image_file' not in request.files:
@@ -39,12 +60,15 @@ def upload_image():
     try:
         output = upload_file_to_s3(file)
     except Exception as e:
-        mssg = "Something Happened in App: " + " : " +  str(e)
+        mssg = "error uploading to s3: " + " : " +  str(e)
         return jsonify(message=mssg)
     
     # if upload success, return uploaded file name
     if output:
-        mssg = 'good here: {0}'.format(output)
+        save_return = save_image_data(file.filename)
+        if not save_return:
+            return jsonify({'error': 'Problem saving image metadata to database'})
+        mssg = 'upload succeeded: {0}'.format(output)
         return jsonify(message=mssg)
         #return redirect("/success")
 
