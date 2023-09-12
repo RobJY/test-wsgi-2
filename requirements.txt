@@ -1,11 +1,9 @@
-Flask
-Werkzeug
 boto3
-flask_awscognito
-flask_cors
-flask_jwt_extended
-flask_wtf
-markupsafe
+cryptography
+flask
+flask-awscognito
+flask-cors
+flask-jwt-extended
 pyjwt
-python-dotenv
 pyyaml
+werkzeug

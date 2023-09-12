@@ -1,15 +1,18 @@
-from flask import Response, Flask, json, jsonify, make_response, send_from_directory, render_template
+from flask import request, redirect, url_for, Flask, jsonify, make_response, send_from_directory, render_template
 from utils.image import create_list_image_data, get_image_data, upload_image, list_files, list_imageIds
-
-from flask import request, redirect, url_for
+from utils.utils import load_yaml_vars
 from flask_awscognito import AWSCognitoAuthentication
 from flask_cors import CORS
-from jwt.algorithms import RSAAlgorithm
 from utils.keys import get_cognito_public_keys
-from utils.utils import load_yaml_vars
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, set_access_cookies, get_jwt_identity, jwt_required
-from flask_wtf.csrf import CSRFProtect
-import requests
+
+# do we need this??
+# import jwt  # will collide with jwt in set-up block
+
+
+from jwt.algorithms import RSAAlgorithm
+
+#from flask_wtf.csrf import CSRFProtect
 
 yaml_vars = load_yaml_vars()
 
@@ -21,18 +24,20 @@ app.config["AWS_COGNITO_USER_POOL_CLIENT_SECRET"] = yaml_vars['cognito_user_pool
 app.config["AWS_COGNITO_REDIRECT_URL"] = yaml_vars['cognito_authenticated_url']
 app.config["AWS_DEFAULT_REGION"] = yaml_vars['aws_region']
 app.config["AWS_COGNITO_DOMAIN"] = yaml_vars['cognito_domain']
-app.config['PROPAGATE_EXCEPTIONS'] = True
-app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config["JWT_SECRET_KEY"] = yaml_vars['jwt_secret_key']
 app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False   # will want to harden this!
+# seems like the following vars are not needed
+#app.config['PROPAGATE_EXCEPTIONS'] = True
+#app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+# will want to add this when we harden the system
+#app.config["JWT_COOKIE_CSRF_PROTECT"] = False   # will want to harden this!
 
 try:
     print('*** starting set-up ***')
     CORS(app)
     aws_auth = AWSCognitoAuthentication(app)
     jwt = JWTManager(app)
-    # csrf = CSRFProtect(app)
+    ## csrf = CSRFProtect(app)
     print('*** finished set-up ***')
 except Exception as e:
     print('**** set-up error: {}'.format(str(e)))
@@ -83,11 +88,14 @@ def get_image_ids():
 def create_image():
     return create_list_image_data()
 
+
 # just wanted to test and it works   
 # @app.route("/test_cognito")
 # def test_cognito():
 #     return get_cognito_public_keys()
 
+
+'''  working code  '''
 @app.route("/login")
 def login():
     print('*** entering login ***')
@@ -119,28 +127,6 @@ def protected():
     print('*** leaving protected ***')
     return jsonify(logged_in_as=current_user), 200
 
-#@app.route("/secret")
-#def secret():
-#    # verify_jwt_in_request_optional()
-#    # TO DO: wrap statement below in try/catch to gracefully handle exception
-#    print('*** entering protected ***')
-#    try:
-#        print('flag 1')
-#        verify_jwt_in_request()
-#        print('flag 1.1')
-#    except Exception as e:
-#        print('flag 2')
-#        print(e)
-#        # print(aws_auth.get_sign_in_url())
-#        return redirect(aws_auth.get_sign_in_url())
-#
-#    print('flag 3')
-#    if get_jwt_identity():
-#        print('flag 4')
-#        return render_template("secret.html")
-#    else:
-#        print('flag 5')
-#        return redirect(aws_auth.get_sign_in_url())
 
 @app.route("/loggedin/", methods=["GET"])
 def loggedin():
@@ -177,7 +163,7 @@ def loggedin():
     print('*** leaving loggedin ***')
     return resp
 
-
+''' end working code '''
 
 # @app.route('/base')
 # @aws_auth.authentication_required
@@ -197,68 +183,66 @@ def loggedin():
 #    print()
 #    return redirect(aws_auth.get_sign_in_url())
 
+
+#aws_auth = AWSCognitoAuthentication(app)
+
+#@app.route('/')
+#def index():   
+#    return ('index')
+
+#@app.route('/loggedin')
+#def aws_cognito_redirect():
+#    print('request.args')
+#    print(request.args)
+#    print(request.args.to_dict())
+#    #request_args_json = json.dumps(request.args.to_dict())
+#    #print(request_args_json)
+#    #print('requesting access token...')
+#    #access_token = aws_auth.get_access_token(request.args)
+#    #print('access token: {}'.format(access_token))
+#    #request.headers.get(access_token)   
+#    #url = "http://127.0.0.1:5000/secret"
+#    #headers = {'Authorization': 'Bearer ' + str(access_token)}
+#    #response = requests.get(url, headers=headers) 
+#    #return response.content
+#    return jsonify(message=request.args)
+
 '''
-aws_auth = AWSCognitoAuthentication(app)
+#@app.route('/sign_in')
+#def sign_in():
+#    return redirect(aws_auth.get_sign_in_url())
 
-@app.route('/')
-def index():   
-    return ('index')
-
-@app.route('/loggedin')
-def aws_cognito_redirect():
-    print('request.args')
-    print(request.args)
-    print(request.args.to_dict())
-    #request_args_json = json.dumps(request.args.to_dict())
-    #print(request_args_json)
-    #print('requesting access token...')
-    #access_token = aws_auth.get_access_token(request.args)
-    #print('access token: {}'.format(access_token))
-    #request.headers.get(access_token)   
-    #url = "http://127.0.0.1:5000/secret"
-    #headers = {'Authorization': 'Bearer ' + str(access_token)}
-    #response = requests.get(url, headers=headers) 
-    #return response.content
-    return jsonify(message=request.args)
-
-@app.route('/sign_in')
-def sign_in():
-    return redirect(aws_auth.get_sign_in_url())
-
-@app.route('/secret')
-@aws_auth.authentication_required
-def loggedin():
-    return ('logged in successfully!')
+#@app.route('/secret')
+#@aws_auth.authentication_required
+#def loggedin():
+#    return ('logged in successfully!')
  
-if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
-
-'''
-
-'''
-
-aws_auth = AWSCognitoAuthentication(app)
+#if __name__ == "__main__":
+#    app.run(debug=True, use_reloader=False)
 
 
-@app.route('/')
-@aws_auth.authentication_required
-def index():
-    claims = aws_auth.claims # also available through g.cognito_claims
-    return jsonify({'claims': claims})
+#aws_auth = AWSCognitoAuthentication(app)
 
 
-@app.route('/loggedin')
-def aws_cognito_redirect():
-    access_token = aws_auth.get_access_token(request.args)
-    return jsonify({'access_token': access_token})
+#@app.route('/')
+#@aws_auth.authentication_required
+#def index():
+#    claims = aws_auth.claims # also available through g.cognito_claims
+#    return jsonify({'claims': claims})
 
 
-@app.route('/sign_in')
-def sign_in():
-    return redirect(aws_auth.get_sign_in_url())
+#@app.route('/loggedin')
+#def aws_cognito_redirect():
+#    access_token = aws_auth.get_access_token(request.args)
+#    return jsonify({'access_token': access_token})
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+#@app.route('/sign_in')
+#def sign_in():
+#    return redirect(aws_auth.get_sign_in_url())
+
+
+#if __name__ == '__main__':
+#    app.run(debug=True)
 
 '''
