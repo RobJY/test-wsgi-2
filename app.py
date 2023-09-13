@@ -12,7 +12,7 @@ from flask_jwt_extended import JWTManager, verify_jwt_in_request, set_access_coo
 
 from jwt.algorithms import RSAAlgorithm
 
-#from flask_wtf.csrf import CSRFProtect
+# from flask_wtf.csrf import CSRFProtect
 
 yaml_vars = load_yaml_vars()
 

@@ -1,6 +1,6 @@
 boto3
-cryptography
-flask
+cryptography<38.0
+Flask
 flask-awscognito
 flask-cors
 flask-jwt-extended
