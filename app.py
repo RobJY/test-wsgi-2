@@ -6,8 +6,8 @@ from flask_cors import CORS
 from utils.keys import get_cognito_public_keys
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, set_access_cookies, get_jwt_identity, jwt_required
 from jwt.algorithms import RSAAlgorithm
-
 from flask_wtf.csrf import CSRFProtect
+import sys
 
 yaml_vars = load_yaml_vars()
 
@@ -21,23 +21,17 @@ app.config["AWS_DEFAULT_REGION"] = yaml_vars['aws_region']
 app.config["AWS_COGNITO_DOMAIN"] = yaml_vars['cognito_domain']
 app.config["JWT_SECRET_KEY"] = yaml_vars['jwt_secret_key']
 app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
-# seems like the following vars are not needed
-#app.config['PROPAGATE_EXCEPTIONS'] = True
-#app.config['JWT_TOKEN_LOCATION'] = ['cookies']
-# will want to add this when we harden the system
-app.config["JWT_COOKIE_CSRF_PROTECT"] = True   # will want to harden this!
+app.config["JWT_COOKIE_CSRF_PROTECT"] = True
 
 try:
-    print('*** starting set-up ***')
     CORS(app)
     aws_auth = AWSCognitoAuthentication(app)
     jwt = JWTManager(app)
     csrf = CSRFProtect()
     csrf.init_app(app)
-    print('*** finished set-up ***')
 except Exception as e:
-    print('**** set-up error: {}'.format(str(e)))
-
+    print('start-up error: {}'.format(str(e)))
+    sys.exit(1)
 
 @app.errorhandler(404)
 def resource_not_found(e):
@@ -84,14 +78,6 @@ def get_image_ids():
 def create_image():
     return create_list_image_data()
 
-
-# just wanted to test and it works   
-# @app.route("/test_cognito")
-# def test_cognito():
-#     return get_cognito_public_keys()
-
-
-'''  working code  '''
 @app.route("/login")
 def login():
     print('*** entering login ***')
@@ -128,117 +114,11 @@ def protected():
 def loggedin():
     print('*** entering loggedin ***')
     print('request.args = {}'.format(request.args))
-    # print('access_token = {}'.format(aws_auth.get_access_token(request.args)))
     access_token = aws_auth.get_access_token(request.args)
     print('access_token: {}'.format(access_token))
 
-    #resp = make_response(redirect(url_for('protected')))
-    # set_access_cookies(resp, access_token, max_age=30 * 60)
-    #resp.set_cookie('access_token', access_token)
-    #headers = { 'HTTP_AUTHORIZATION': access_token }
-    #resp.headers = headers
-
-    #resp = Response(url_for("protected"), 
-    #                status=302, 
-    #                headers={ 'HTTP_AUTHORIZATION': access_token, 'Location': url_for("protected") })
-    # try:
     resp = make_response(redirect(url_for("protected")))
     set_access_cookies(resp, access_token, max_age=30*60)
 
-    # except Exception as e:
-    #     print('*** failed to set access cookies ***')
-    #     print(e)
-    #     return redirect(url_for("fail"))
-
-    # resp = redirect(url_for('protected'))
-    # resp.data = ''
-    # # resp.set_cookie('access_token', access_token)
-    # resp.headers = { 'HTTP_AUTHORIZATION': access_token }
-    # #resp.headers = headers
-
     print('*** leaving loggedin ***')
     return resp
-
-''' end working code '''
-
-# @app.route('/base')
-# @aws_auth.authentication_required
-# def index():
-#     claims = aws_auth.claims # also available through g.cognito_claims
-#     return jsonify({'claims': claims})
-
-
-#@app.route('/aws_cognito_redirect')
-#def aws_cognito_redirect():
-#    access_token = aws_auth.get_access_token(request.args)
-#    return jsonify({'access_token': access_token})
-
-#@app.route('/sign_in')
-#def sign_in():
-#    print(aws_auth.get_sign_in_url())
-#    print()
-#    return redirect(aws_auth.get_sign_in_url())
-
-
-#aws_auth = AWSCognitoAuthentication(app)
-
-#@app.route('/')
-#def index():   
-#    return ('index')
-
-#@app.route('/loggedin')
-#def aws_cognito_redirect():
-#    print('request.args')
-#    print(request.args)
-#    print(request.args.to_dict())
-#    #request_args_json = json.dumps(request.args.to_dict())
-#    #print(request_args_json)
-#    #print('requesting access token...')
-#    #access_token = aws_auth.get_access_token(request.args)
-#    #print('access token: {}'.format(access_token))
-#    #request.headers.get(access_token)   
-#    #url = "http://127.0.0.1:5000/secret"
-#    #headers = {'Authorization': 'Bearer ' + str(access_token)}
-#    #response = requests.get(url, headers=headers) 
-#    #return response.content
-#    return jsonify(message=request.args)
-
-'''
-#@app.route('/sign_in')
-#def sign_in():
-#    return redirect(aws_auth.get_sign_in_url())
-
-#@app.route('/secret')
-#@aws_auth.authentication_required
-#def loggedin():
-#    return ('logged in successfully!')
- 
-#if __name__ == "__main__":
-#    app.run(debug=True, use_reloader=False)
-
-
-#aws_auth = AWSCognitoAuthentication(app)
-
-
-#@app.route('/')
-#@aws_auth.authentication_required
-#def index():
-#    claims = aws_auth.claims # also available through g.cognito_claims
-#    return jsonify({'claims': claims})
-
-
-#@app.route('/loggedin')
-#def aws_cognito_redirect():
-#    access_token = aws_auth.get_access_token(request.args)
-#    return jsonify({'access_token': access_token})
-
-
-#@app.route('/sign_in')
-#def sign_in():
-#    return redirect(aws_auth.get_sign_in_url())
-
-
-#if __name__ == '__main__':
-#    app.run(debug=True)
-
-'''
