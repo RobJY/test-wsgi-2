@@ -4,6 +4,7 @@ Flask
 flask-awscognito
 flask-cors
 flask-jwt-extended
+flask-wtf
 pyjwt
 pyyaml
 werkzeug
