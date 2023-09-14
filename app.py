@@ -5,14 +5,9 @@ from flask_awscognito import AWSCognitoAuthentication
 from flask_cors import CORS
 from utils.keys import get_cognito_public_keys
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, set_access_cookies, get_jwt_identity, jwt_required
-
-# do we need this??
-# import jwt  # will collide with jwt in set-up block
-
-
 from jwt.algorithms import RSAAlgorithm
 
-# from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect
 
 yaml_vars = load_yaml_vars()
 
@@ -30,14 +25,15 @@ app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
 #app.config['PROPAGATE_EXCEPTIONS'] = True
 #app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 # will want to add this when we harden the system
-#app.config["JWT_COOKIE_CSRF_PROTECT"] = False   # will want to harden this!
+app.config["JWT_COOKIE_CSRF_PROTECT"] = True   # will want to harden this!
 
 try:
     print('*** starting set-up ***')
     CORS(app)
     aws_auth = AWSCognitoAuthentication(app)
     jwt = JWTManager(app)
-    ## csrf = CSRFProtect(app)
+    csrf = CSRFProtect()
+    csrf.init_app(app)
     print('*** finished set-up ***')
 except Exception as e:
     print('**** set-up error: {}'.format(str(e)))
