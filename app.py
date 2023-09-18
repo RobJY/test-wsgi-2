@@ -22,6 +22,7 @@ app.config["AWS_COGNITO_DOMAIN"] = yaml_vars['cognito_domain']
 app.config["JWT_SECRET_KEY"] = yaml_vars['jwt_secret_key']
 app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
 app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+app.config['SECRET_KEY'] = yaml_vars['jwt_secret_key']
 
 try:
     CORS(app)
@@ -51,12 +52,24 @@ def fail():
 
 @app.route("/list_bucket")
 def list():
-    contents = list_files()
-    return render_template('collection.html', contents=contents)
+    verify_jwt_in_request(locations = ['cookies'])
+    if get_jwt_identity():
+        contents = list_files()
+        return render_template('collection.html', contents=contents)
+    else:
+        print('/list_bucket failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
 
 @app.route("/upload_page")
 def upload_page():
-    return send_from_directory("pages", "upload_page.html")    
+    verify_jwt_in_request(locations = ['cookies'])
+    if get_jwt_identity():
+        # return send_from_directory("pages", "upload_page.html")    
+        return render_template('upload.html')
+    else:
+        print('/upload_page failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -88,14 +101,9 @@ def login():
 
 @app.route("/secret/")
 def protected():
-    print('*** entering protected ***')
-    print('request.args = {}'.format(request.args))
-    print(dir(request))
-    print(f'request.headers = {request.headers}')
     try:
         verify_jwt_in_request(optional = True,
                               locations = ['cookies'])
-        print(f'jwt identity: {get_jwt_identity()}')
         if get_jwt_identity():
             return render_template("secret.html")
         else:
@@ -106,19 +114,36 @@ def protected():
         print(e)
         return redirect(aws_auth.get_sign_in_url())
 
-    print('*** leaving protected ***')
-    return jsonify(logged_in_as=current_user), 200
+@app.route("/menu_submission/", methods=["POST"])
+def menu_submission():
+    token = request.form['token']
+    selected_page = request.form['page_menu']
+    if selected_page == 'list_bucket':
+        resp = make_response(redirect(url_for("list")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload':
+        resp = make_response(redirect(url_for("upload_page")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    else:
+        return redirect(url_for("fail"))
 
-
-@app.route("/loggedin/", methods=["GET"])
-def loggedin():
-    print('*** entering loggedin ***')
-    print('request.args = {}'.format(request.args))
+@app.route("/loggedin/")
+def protected_menu():
     access_token = aws_auth.get_access_token(request.args)
-    print('access_token: {}'.format(access_token))
+    return render_template('secret_menu.html', token=access_token)
 
-    resp = make_response(redirect(url_for("protected")))
-    set_access_cookies(resp, access_token, max_age=30*60)
-
-    print('*** leaving loggedin ***')
-    return resp
+# old working authenticated endpoint
+#@app.route("/loggedin/", methods=["GET"])
+#def loggedin():
+#    print('*** entering loggedin ***')
+#    print('request.args = {}'.format(request.args))
+#    access_token = aws_auth.get_access_token(request.args)
+#    print('access_token: {}'.format(access_token))
+#
+#    resp = make_response(redirect(url_for("protected")))
+#    set_access_cookies(resp, access_token, max_age=30*60)
+#
+#    print('*** leaving loggedin ***')
+#    return resp
