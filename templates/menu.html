@@ -1,0 +1,14 @@
+{% block content %}
+    <h1>{% block title %} Select a page {% endblock %}</h1>
+    <form method="post">
+        <label for="menu">Please select a page:</label>
+        <br>
+        <select id="menu" name="menu">
+            <option value="list_bucket">List Bucket</option>
+        </select>
+        <br>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}

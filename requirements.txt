@@ -1,5 +1,10 @@
-Flask==1.1.4
-Werkzeug==1.0.1
-markupsafe==2.0.1
-python-dotenv
+boto3
+cryptography<38.0
+Flask
+flask-awscognito
+flask-cors
+flask-jwt-extended
+flask-wtf
+pyjwt
 pyyaml
+werkzeug

@@ -11,13 +11,15 @@ custom:
 
 provider:
   name: aws
-  runtime: python3.9
+  runtime: python3.10
+  # architecture: arm64
   stage: dev
-  region: us-east-1
+  region: '${file(./vars.yml):aws_region}'
   deploymentBucket:
     name: ${file(./vars.yml):bucket_serverless}
   environment:
     IMAGES_TABLE: ${self:custom.tableName}
+    STRIP_STAGE_PATH: yes
 
   iam:
     role:

@@ -1,0 +1,16 @@
+{% block content %}
+    <h1>{% block title %} User image preferences: {% endblock %}</h1>
+    <form method="post">
+        <label for="menu">Please select an image:</label>
+        <br>
+        <select id="menu" name="menu">
+            {% for item in images %}
+                <option value="{{ item[1] }}">{{ item[1] }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}
