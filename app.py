@@ -53,6 +53,9 @@ def fail():
 @app.route("/list_bucket")
 def list():
     verify_jwt_in_request(locations = ['cookies'])
+    print('jwt_identity')
+    current_user = get_jwt_identity()
+    print(current_user)
     if get_jwt_identity():
         contents = list_files()
         return render_template('collection.html', contents=contents)
@@ -64,7 +67,6 @@ def list():
 def upload_page():
     verify_jwt_in_request(locations = ['cookies'])
     if get_jwt_identity():
-        # return send_from_directory("pages", "upload_page.html")    
         return render_template('upload.html')
     else:
         print('/upload_page failed.  redirecting to sign in page')
@@ -133,6 +135,15 @@ def menu_submission():
 def protected_menu():
     access_token = aws_auth.get_access_token(request.args)
     return render_template('secret_menu.html', token=access_token)
+
+@app.route("/user_image_pref_page")
+def user_image_pref_page():
+    # get available images
+    images = list_files()
+
+    return render_template('user_image_prefs.html', images=images)
+
+
 
 # old working authenticated endpoint
 #@app.route("/loggedin/", methods=["GET"])
