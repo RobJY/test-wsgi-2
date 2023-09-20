@@ -7,9 +7,9 @@
 <body>
     <form action="/upload" method="POST" enctype="multipart/form-data">
 
-        <label for="image_file">Upload Your File</label>
+        <label for="image_file">Upload Your Files</label>
         <br>
-        <input type="file" name="image_file">
+        <input type="file" name="image_multi" multiple />
         <br>
         <input type="hidden" id="token" name="token" value="{{ token }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

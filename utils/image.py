@@ -1,9 +1,10 @@
 import boto3
+import concurrent.futures
 import flask
 from flask import jsonify, request, redirect
 import os
 from utils.aws import create_s3_client
-from utils.aws import upload_file_to_s3
+from utils.aws import upload_multi_parallel_files_to_s3
 from utils.utils import load_yaml_vars
 import uuid
 
@@ -39,6 +40,19 @@ def save_image_data(image_name):
     # TO DO: catch exception above and process accordingly
     return curr_uuid
 
+
+def upload_image():
+    file_list = request.files.getlist('image_multi')
+    if len(file_list) < 1:
+        return redirect("/fail")
+
+    upload_multi_parallel_files_to_s3(file_list)
+
+    mssg = 'upload succeeded'
+    return jsonify(message=mssg)
+
+
+''' working original
 def upload_image():
     # check whether an input field with name 'image_file' exist
     if 'image_file' not in request.files:
@@ -75,6 +89,7 @@ def upload_image():
     # upload failed, redirect to fail page
     else:
         return redirect("/fail")
+'''
     
 def list_files():
     yaml_vars = load_yaml_vars()

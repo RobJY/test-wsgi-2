@@ -1,4 +1,5 @@
 import boto3
+import concurrent.futures
 from utils.utils import load_yaml_vars
 from werkzeug.utils import secure_filename
 
@@ -21,3 +22,7 @@ def upload_file_to_s3(file):
     
     # after upload file to s3 bucket, return filename of the uploaded file
     return file.filename
+
+def upload_multi_parallel_files_to_s3(file_list):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(upload_file_to_s3, file_list)
