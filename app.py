@@ -95,10 +95,6 @@ def create_image():
 
 @app.route("/login")
 def login():
-    print('*** entering login ***')
-    print(aws_auth.get_sign_in_url())
-    print('*** leaving login ***')
-    test_url = 'https://rob-test-serverless-flask.auth.us-east-1.amazoncognito.com/login?client_id=5hep2oo4uu2rnkhk7l61fit9u2&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Faws_cognito_redirect'
     return redirect(aws_auth.get_sign_in_url())
 
 @app.route("/secret/")

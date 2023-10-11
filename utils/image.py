@@ -41,7 +41,7 @@ def save_image_data(image_name):
     return curr_uuid
 
 
-def upload_image():
+def upload_image_works():
     file_list = request.files.getlist('image_multi')
     if len(file_list) < 1:
         return redirect("/fail")
@@ -51,6 +51,28 @@ def upload_image():
     mssg = 'upload succeeded'
     return jsonify(message=mssg)
 
+def upload_image():
+    print('entering upload_image()...')
+    file_list = request.files.getlist('image_multi')
+    if len(file_list) < 1:
+        return redirect("/fail")
+
+    upload_multi_parallel_files_to_s3(file_list)
+
+    print('starting batch...')
+    client = boto3.client('batch')
+    print('batch client created')
+    resp = client.submit_job(
+        jobDefinition='rob-test-batch-1',
+        jobName='rob-test-batch-flask-1',
+        jobQueue='rob-test-batch-fairshare-1',
+        shareIdentifier='robtest',
+    )
+    print('batch job submitted')
+    print(resp)
+
+    mssg = f'upload succeeded: {resp}'
+    return jsonify(message=mssg)
 
 ''' working original
 def upload_image():
