@@ -18,7 +18,7 @@ def upload_file_to_s3(file):
             Key=filename
         )
     except Exception as e:
-        return "Something Happened: " + " : " +  str(e)
+        return "Error: " + " : " +  str(e)
     
     # after upload file to s3 bucket, return filename of the uploaded file
     return file.filename
