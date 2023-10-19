@@ -1,8 +1,11 @@
+import base64
 import boto3
 import concurrent.futures
 import flask
 from flask import jsonify, request, redirect
+import json
 import os
+import sys
 from utils.aws import create_s3_client
 from utils.aws import upload_multi_parallel_files_to_s3
 from utils.utils import load_yaml_vars
@@ -52,27 +55,47 @@ def upload_image_works():
     return jsonify(message=mssg)
 
 def upload_image():
-    print('entering upload_image()...')
     file_list = request.files.getlist('image_multi')
     if len(file_list) < 1:
         return redirect("/fail")
 
     upload_multi_parallel_files_to_s3(file_list)
 
+    mssg = f'upload succeeded: {resp}'
+    return jsonify(message=mssg)
+
+def upload_image_batch():
+    print('entering upload_image_batch()...')
+    file_list = request.files.getlist('image_multi')
+    if len(file_list) < 1:
+        return redirect("/fail")
+    
+    print(dir(file_list[0]))
+    print(file_list[0].filename)
+    print(file_list[0].name)
+    sys.exit(1)
+
+    #json_file_obj_list = []
+    #for curr_file in file_list:
+    #    file_obj_json = json.dumps(curr_file)
+    #    json_file_obj_list.append(file_obj_json)
+
     print('starting batch...')
     client = boto3.client('batch')
     print('batch client created')
     resp = client.submit_job(
-        jobDefinition='rob-test-batch-1',
-        jobName='rob-test-batch-flask-1',
+        jobDefinition='rob-test-batch-upload',
+        jobName='rob-test-batch-upload-1',
         jobQueue='rob-test-batch-fairshare-1',
         shareIdentifier='robtest',
+        parameters={
+            'fp1': file_pointers[0]
+        }
     )
-    print('batch job submitted')
-    print(resp)
 
-    mssg = f'upload succeeded: {resp}'
+    mssg = f'batch job submitted: {resp}'
     return jsonify(message=mssg)
+
 
 ''' working original
 def upload_image():

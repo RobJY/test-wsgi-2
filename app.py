@@ -1,5 +1,5 @@
 from flask import request, redirect, url_for, Flask, jsonify, make_response, send_from_directory, render_template
-from utils.image import create_list_image_data, get_image_data, upload_image, list_files, list_imageIds
+from utils.image import create_list_image_data, get_image_data, upload_image, upload_image_batch, list_files, list_imageIds
 from utils.utils import load_yaml_vars
 from flask_awscognito import AWSCognitoAuthentication
 from flask_cors import CORS
@@ -72,10 +72,22 @@ def upload_page():
         print('/upload_page failed.  redirecting to sign in page')
         return redirect(aws_auth.get_sign_in_url())
 
+@app.route("/upload_batch_page")
+def upload_page_batch():
+    verify_jwt_in_request(locations = ['cookies'])
+    if get_jwt_identity():
+        return render_template('upload_batch.html')
+    else:
+        print('/upload_page failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
 
 @app.route("/upload", methods=["POST"])
 def upload():
     return upload_image()
+
+@app.route("/upload_batch", methods=["POST"])
+def upload_batch():
+    return upload_image_batch()
 
 @app.route("/images/<string:image_id>")
 def get_image(image_id):
@@ -122,6 +134,10 @@ def menu_submission():
         return resp
     elif selected_page == 'upload':
         resp = make_response(redirect(url_for("upload_page")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload_batch':
+        resp = make_response(redirect(url_for("upload_page_batch")))
         set_access_cookies(resp, token, max_age=30*60)
         return resp
     else:
