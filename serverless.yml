@@ -8,6 +8,8 @@ custom:
   wsgi:
     app: app.app
   tableName: '${file(./vars.yml):image_table_name}-${self:provider.stage}'
+  textMimeTypes:
+    - text/plain
 
 provider:
   name: aws
@@ -20,6 +22,9 @@ provider:
   environment:
     IMAGES_TABLE: ${self:custom.tableName}
     STRIP_STAGE_PATH: yes
+  #apiGateway:
+  #  binaryMediaTypes:
+  #    - "*/*"
 
   iam:
     role:

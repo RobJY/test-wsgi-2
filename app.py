@@ -23,6 +23,9 @@ app.config["JWT_SECRET_KEY"] = yaml_vars['jwt_secret_key']
 app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
 app.config["JWT_COOKIE_CSRF_PROTECT"] = True
 app.config['SECRET_KEY'] = yaml_vars['jwt_secret_key']
+upload_folder = '/opt/DATA'
+# upload_folder = '/tmp'
+app.config['UPLOAD_FOLDER'] = upload_folder
 
 try:
     CORS(app)
@@ -87,7 +90,7 @@ def upload():
 
 @app.route("/upload_batch", methods=["POST"])
 def upload_batch():
-    return upload_image_batch()
+    return upload_image_batch(app.config['UPLOAD_FOLDER'])
 
 @app.route("/images/<string:image_id>")
 def get_image(image_id):
@@ -95,7 +98,7 @@ def get_image(image_id):
 
 @app.route("/create_db_entry")
 def create_db_entry():
-    return send_from_directory("pages", "create_db_entry.html")    
+    return send_from_directory("pages", "create_db_entry.html")
 
 @app.route("/imageIds")
 def get_image_ids():

@@ -64,16 +64,30 @@ def upload_image():
     mssg = f'upload succeeded: {resp}'
     return jsonify(message=mssg)
 
-def upload_image_batch():
+def upload_image_batch(full_path):
     print('entering upload_image_batch()...')
+
     file_list = request.files.getlist('image_multi')
     if len(file_list) < 1:
         return redirect("/fail")
     
-    print(dir(file_list[0]))
-    print(file_list[0].filename)
-    print(file_list[0].name)
-    sys.exit(1)
+    bucket_name = 'rob-hits-dev'
+    object_name_remote = file_list[0].filename
+    fields = None
+    conditions=None
+    expiration=3600
+
+    s3_client = boto3.client('s3')
+
+    try:
+        response = s3_client.generate_presigned_post(bucket_name,
+                                                     object_name_remote,
+                                                     Fields=fields,
+                                                     Conditions=conditions,
+                                                     ExpiresIn=expiration)
+    except botocore.exceptions.ClientError as e:
+        print(e)
+
 
     #json_file_obj_list = []
     #for curr_file in file_list:
@@ -84,12 +98,21 @@ def upload_image_batch():
     client = boto3.client('batch')
     print('batch client created')
     resp = client.submit_job(
-        jobDefinition='rob-test-batch-upload',
+        jobDefinition='rob-test-batch-upload:2',
         jobName='rob-test-batch-upload-1',
         jobQueue='rob-test-batch-fairshare-1',
         shareIdentifier='robtest',
-        parameters={
-            'fp1': file_pointers[0]
+        containerOverrides={
+            'environment': [
+                {
+                    'name': 'FILENAME',
+                    'value': file_list[0].filename
+                },
+                {
+                    'name': 'FULL_PATH',
+                    'value': full_path
+                },
+            ]
         }
     )
 
