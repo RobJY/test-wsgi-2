@@ -1,5 +1,6 @@
+import boto3
 from flask import request, redirect, url_for, Flask, jsonify, make_response, send_from_directory, render_template
-from utils.image import create_list_image_data, get_image_data, upload_image, upload_image_batch, list_files, list_imageIds
+from utils.image import create_list_image_data, get_image_data, upload_image, upload_image_batch, upload_image_batch_single, list_files, list_imageIds
 from utils.utils import load_yaml_vars
 from flask_awscognito import AWSCognitoAuthentication
 from flask_cors import CORS
@@ -8,6 +9,10 @@ from flask_jwt_extended import JWTManager, verify_jwt_in_request, set_access_coo
 from jwt.algorithms import RSAAlgorithm
 from flask_wtf.csrf import CSRFProtect
 import sys
+import json
+import requests
+import base64
+from codecs import encode
 
 yaml_vars = load_yaml_vars()
 
@@ -24,9 +29,9 @@ app.config["JWT_ALGORITHM"] = yaml_vars['jwt_algorithm']
 app.config["JWT_COOKIE_CSRF_PROTECT"] = True
 app.config['SECRET_KEY'] = yaml_vars['jwt_secret_key']
 upload_folder = '/opt/DATA'
-# upload_folder = '/tmp'
+# upload_folder = '/tmp/DATA'
 app.config['UPLOAD_FOLDER'] = upload_folder
-
+from utils.aws import create_s3_client
 try:
     CORS(app)
     aws_auth = AWSCognitoAuthentication(app)
@@ -84,6 +89,126 @@ def upload_page_batch():
         print('/upload_page failed.  redirecting to sign in page')
         return redirect(aws_auth.get_sign_in_url())
 
+@app.route("/upload_batch_single_page")
+def upload_batch_single_page():
+    verify_jwt_in_request(locations = ['cookies'])
+    if get_jwt_identity():
+        return render_template('upload_batch_single.html')
+    else:
+        print('/upload_page failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
+     
+@app.route('/upload_direct_page',methods=['GET'])
+def upload_direct_page():
+    verify_jwt_in_request(locations = ['cookies'])
+    print('jwt_identity')
+    current_user = get_jwt_identity()
+    print(current_user)
+    if get_jwt_identity():
+        contents = list_files()
+        return render_template('upload_direct.html')
+    else:
+        print('/list_bucket failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
+
+@app.route('/upload_direct', methods=['POST'])
+def upload_direct():
+    '''
+    file = request.files['files']
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(yaml_vars['bucket_data'])
+    bucket.Object(file.filename).put(Body=file.read())
+    # return render_template('success.html')
+    resp = make_response(redirect(url_for("success")))
+    return resp
+    '''
+
+    ''' works but we wait until it finishes
+    bucket = yaml_vars['bucket_data']
+    # file_name = request.args.get('file_name')
+    # file_type = request.args.get('file_type')
+    file = request.files['files']
+    filename = file.filename
+
+    s3 = boto3.client('s3')
+
+    presigned_post = s3.generate_presigned_post(
+        Bucket = bucket,
+        Key = filename,
+        Fields = {},
+        Conditions = [],
+        ExpiresIn = 3600
+    )
+
+    return json.dumps({
+        'data': presigned_post,
+        'url': f'https://{bucket}.s3.amazonaws.com/{filename}'
+    })
+    '''
+
+    file = None
+    if "files" in request.files:
+        file = request.files['files']
+    else:
+        return jsonify(error="requires file")
+    
+    key = "file_name"
+    file.save(key)
+
+    print(dir(request))
+    print(dir(request.files))
+
+    bucket_name = yaml_vars['bucket_data']
+    fields = None
+    conditions = None
+    expiration = 3600
+    s3_client = create_s3_client()
+
+    response = s3_client.generate_presigned_post(bucket_name,
+                                                file.filename,
+                                                Fields=fields,
+                                                Conditions=conditions,
+                                                ExpiresIn=expiration)
+
+    files = [
+        ('file', open(key, 'rb'))
+    ]
+
+    #with open(file.filename, 'rb') as f:
+    #    files = {'file': (file.filename, f)}
+    http_response = requests.post(response['url'], data=response['fields'], files=files)
+    print(http_response.status_code)
+    resp = make_response(redirect(url_for("success")))
+    return resp
+
+
+@app.route("/presigned_s3")
+def presigned_s3():
+    bucket = yaml_vars['bucket_data']
+    # file_name = request.args.get('file_name')
+    # file_type = request.args.get('file_type')
+    file = request.files['files']
+
+    file_name = file.name
+    file_type = file.type
+
+    s3 = boto3.client('s3')
+
+    presigned_post = s3.generate_presigned_post(
+        Bucket = bucket,
+        Key = file_name,
+        Fields = {"Content-Type": file_type},
+        Conditions = [
+            {"Content-Type": file_type}
+        ],
+        ExpiresIn = 3600
+    )
+
+    return json.dumps({
+        'data': presigned_post,
+        'url': f'https://{bucket}.s3.amazonaws.com/{file_name}'
+    })
+
 @app.route("/upload", methods=["POST"])
 def upload():
     return upload_image()
@@ -91,6 +216,13 @@ def upload():
 @app.route("/upload_batch", methods=["POST"])
 def upload_batch():
     return upload_image_batch(app.config['UPLOAD_FOLDER'])
+
+@app.route("/upload_batch_single", methods=["POST"])
+def upload_batch_single():
+    file = request.files['image']
+    file_data_hex = file.read().hex()
+    filename = file.filename
+    return upload_image_batch_single(filename, file_data_hex)
 
 @app.route("/images/<string:image_id>")
 def get_image(image_id):
@@ -141,6 +273,14 @@ def menu_submission():
         return resp
     elif selected_page == 'upload_batch':
         resp = make_response(redirect(url_for("upload_page_batch")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload_direct':
+        resp = make_response(redirect(url_for("upload_direct_page")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload_batch_single':
+        resp = make_response(redirect(url_for("upload_batch_single_page")))
         set_access_cookies(resp, token, max_age=30*60)
         return resp
     else:

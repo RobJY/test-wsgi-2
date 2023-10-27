@@ -98,7 +98,7 @@ def upload_image_batch(full_path):
     client = boto3.client('batch')
     print('batch client created')
     resp = client.submit_job(
-        jobDefinition='rob-test-batch-upload:2',
+        jobDefinition='rob-test-batch-upload:11',
         jobName='rob-test-batch-upload-1',
         jobQueue='rob-test-batch-fairshare-1',
         shareIdentifier='robtest',
@@ -119,6 +119,33 @@ def upload_image_batch(full_path):
     mssg = f'batch job submitted: {resp}'
     return jsonify(message=mssg)
 
+def upload_image_batch_single(filename, file_data_hex):
+    print('entering upload_image_batch_single()...')
+
+    print('starting batch...')
+    client = boto3.client('batch')
+    print('batch client created')
+    resp = client.submit_job(
+        jobDefinition='rob-test-batch-upload:2',
+        jobName='rob-test-batch-upload-1',
+        jobQueue='rob-test-batch-fairshare-1',
+        shareIdentifier='robtest',
+        containerOverrides={
+            'environment': [
+                {
+                    'name': 'FILENAME',
+                    'value': filename
+                },
+                {
+                    'name': 'FILE_DATA',
+                    'value': file_data_hex
+                },
+            ]
+        }
+    )
+
+    mssg = f'batch job submitted: {resp}'
+    return jsonify(message=mssg)
 
 ''' working original
 def upload_image():
