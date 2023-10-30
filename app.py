@@ -181,9 +181,73 @@ def upload_direct():
     resp = make_response(redirect(url_for("success")))
     return resp
 
+@app.route('/sign_s3')
+def sign_s3():
+  S3_BUCKET = yaml_vars['bucket_data']
+
+  file_name = request.args.get('file_name')
+  file_type = request.args.get('file_type')
+
+  s3 = boto3.client('s3')
+
+  presigned_post = s3.generate_presigned_post(
+    Bucket = S3_BUCKET,
+    Key = file_name,
+    Fields = {"Content-Type": file_type},
+    Conditions = [
+      {"Content-Type": file_type}
+    ],
+    ExpiresIn = 3600
+  )
+
+  return json.dumps({
+    'data': presigned_post,
+    'url': 'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name)
+  })
+
+@app.route('/upload_direct_url_2_page',methods=['GET'])
+def upload_direct_url_2_page():
+    verify_jwt_in_request(locations = ['cookies'])
+    print('jwt_identity')
+    current_user = get_jwt_identity()
+    print(current_user)
+    if get_jwt_identity():
+        contents = list_files()
+        return render_template('upload_direct_url_2.html')
+    else:
+        print('/list_bucket failed.  redirecting to sign in page')
+        return redirect(aws_auth.get_sign_in_url())
 
 @app.route("/presigned_s3")
 def presigned_s3():
+    '''
+    file = None
+    if "files" in request.files:
+        file = request.files['files']
+    else:
+        return jsonify(error="requires file")
+    
+    key = "file_name"
+    file.save(key)
+    '''
+
+    bucket_name = yaml_vars['bucket_data']
+    fields = None
+    conditions = None
+    expiration = 3600
+    s3_client = create_s3_client()
+
+    response = s3_client.generate_presigned_post(Bucket=bucket_name,
+                                                 Key='foo.ome.tif',
+                                                 Fields=fields,
+                                                 Conditions=conditions,
+                                                 ExpiresIn=expiration)
+    
+    print(response)
+
+    return render_template('upload_direct_url.html', presign_url=response['url'])
+
+    '''
     bucket = yaml_vars['bucket_data']
     # file_name = request.args.get('file_name')
     # file_type = request.args.get('file_type')
@@ -208,6 +272,7 @@ def presigned_s3():
         'data': presigned_post,
         'url': f'https://{bucket}.s3.amazonaws.com/{file_name}'
     })
+    '''
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -281,6 +346,14 @@ def menu_submission():
         return resp
     elif selected_page == 'upload_batch_single':
         resp = make_response(redirect(url_for("upload_batch_single_page")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload_direct_url':
+        resp = make_response(redirect(url_for("presigned_s3")))
+        set_access_cookies(resp, token, max_age=30*60)
+        return resp
+    elif selected_page == 'upload_direct_url_2':
+        resp = make_response(redirect(url_for("upload_direct_url_2_page")))
         set_access_cookies(resp, token, max_age=30*60)
         return resp
     else:
