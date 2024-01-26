@@ -6,6 +6,8 @@ RUN conda install python==3.10
 
 RUN python -m pip install -q s3fs
 
-COPY test_s3fs_docker.py cycif-tonsil-cycle1.ome.tif /opt
+RUN mkdir /opt/input
 
-ENTRYPOINT ["python", "/opt/test_s3fs_docker.py"]
+COPY ometif2zarr.py /opt/
+
+ENTRYPOINT ["python", "/opt/ometif2zarr.py"]
